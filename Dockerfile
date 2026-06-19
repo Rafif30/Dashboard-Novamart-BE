@@ -7,15 +7,12 @@ RUN npm install
 
 COPY . .
 
-# Tambahkan dummy DATABASE_URL hanya untuk prisma generate saat build
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 
-# Generate Prisma Client
 RUN npx prisma generate
-
-# Build NestJS
 RUN npm run build
 
+RUN ls -la /app/dist/
 
 FROM node:20-alpine AS production
 
@@ -27,8 +24,8 @@ RUN npm install --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 
-# Generate Prisma Client lagi untuk production image
-RUN npx prisma generate
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
 EXPOSE 3000
 
