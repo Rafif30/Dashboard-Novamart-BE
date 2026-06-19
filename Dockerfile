@@ -12,6 +12,8 @@ ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 RUN npx prisma generate
 RUN npm run build
 
+RUN find /app/dist -type f
+
 FROM node:20-alpine AS production
 
 WORKDIR /app
