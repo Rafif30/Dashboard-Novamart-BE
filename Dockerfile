@@ -12,7 +12,9 @@ ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 RUN npx prisma generate
 RUN npm run build
 
+# Lihat semua file di dist secara recursive
 RUN find /app/dist -type f
+
 
 FROM node:20-alpine AS production
 
@@ -21,7 +23,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN find /app/dist -type f
 RUN npm install --omit=dev
-RUN npm run seed
+# RUN npm run seed
 
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
