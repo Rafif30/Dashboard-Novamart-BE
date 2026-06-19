@@ -18,7 +18,6 @@
  *  - Setiap customer DIJAMIN minimal 1 order (kecuali At_risk yang memang bisa churn)
  */
 
-require('dotenv').config();
 const { Pool } = require('pg');
 const { faker } = require('@faker-js/faker/locale/id_ID');
 
