@@ -19,6 +19,7 @@ FROM node:20-alpine AS production
 WORKDIR /app
 
 COPY package*.json ./
+RUN find /app/dist -type f
 RUN npm install --omit=dev
 RUN npm run seed
 
