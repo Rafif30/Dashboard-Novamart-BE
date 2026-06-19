@@ -1,0 +1,264 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUM TYPES
+// ============================================================
+
+enum OrderStatus {
+  processing
+  shipped
+  delivered
+  returned
+}
+
+enum OrderChannel {
+  website
+  mobile_app
+  marketplace
+  other
+}
+
+enum CustomerSegment {
+  VIP
+  Loyal
+  Occasional
+  At_risk
+}
+
+enum Role {
+  SUPER_ADMIN
+  EXECUTIVE
+  ANALYST_REGION
+}
+
+enum OAuthProvider {
+  GOOGLE
+}
+
+// ============================================================
+// REGION
+// ============================================================
+
+model Region {
+  id        String     @id @default(uuid()) @db.Uuid
+  name      String     @unique
+  slug      String     @unique
+  customers Customer[]
+  orders    Order[]
+  users     User[]
+
+  @@map("regions")
+}
+
+// ============================================================
+// CUSTOMERS
+// ============================================================
+
+model Customer {
+  id             String          @id @default(uuid()) @db.Uuid
+  name           String
+  email          String          @unique
+  phone          String?
+  region_id      String          @db.Uuid
+  segment        CustomerSegment @default(Occasional)
+  lifetime_value Decimal         @default(0) @db.Decimal(12, 2)
+  total_orders   Int             @default(0)
+  last_order_at  DateTime?
+  created_at     DateTime        @default(now())
+
+  region Region  @relation(fields: [region_id], references: [id])
+  orders Order[]
+
+  @@index([segment])
+  @@index([region_id])
+  @@index([created_at])
+  @@map("customers")
+}
+
+// ============================================================
+// CATEGORIES
+// ============================================================
+
+model Category {
+  id   String @id @default(uuid()) @db.Uuid
+  name String @unique
+  slug String @unique
+
+  products Product[]
+
+  @@map("categories")
+}
+
+// ============================================================
+// PRODUCTS
+// ============================================================
+
+model Product {
+  id             String   @id @default(uuid()) @db.Uuid
+  category_id    String   @db.Uuid
+  name           String
+  sku            String   @unique
+  price          Decimal  @db.Decimal(12, 2)
+  cost_price     Decimal  @db.Decimal(12, 2) // untuk gross margin
+  stock_quantity Int      @default(0)
+  rating         Decimal  @default(0) @db.Decimal(3, 2)
+  total_reviews  Int      @default(0)
+  is_active      Boolean  @default(true)
+  created_at     DateTime @default(now())
+  last_stock_date DateTime? 
+
+  category    Category    @relation(fields: [category_id], references: [id])
+  order_items OrderItem[]
+
+  @@index([category_id])
+  @@index([is_active])
+  @@map("products")
+}
+
+// ============================================================
+// ORDERS
+// ============================================================
+
+model Order {
+  id              String       @id @default(uuid()) @db.Uuid
+  customer_id     String       @db.Uuid
+  status          OrderStatus  @default(processing)
+  channel         OrderChannel @default(website)
+  total_amount    Decimal      @db.Decimal(12, 2)
+  discount_amount Decimal      @default(0) @db.Decimal(12, 2) // untuk net revenue
+  shipping_cost   Decimal      @default(0) @db.Decimal(12, 2)
+  region_id       String       @db.Uuid
+  ordered_at      DateTime     @default(now()) // kunci filter date range
+  delivered_at    DateTime?
+
+  region   Region      @relation(fields: [region_id], references: [id])
+  customer Customer    @relation(fields: [customer_id], references: [id])
+  items    OrderItem[]
+
+  @@index([ordered_at]) // index utama untuk date range filter
+  @@index([customer_id])
+  @@index([status])
+  @@index([channel])
+  @@index([region_id])
+  @@map("orders")
+}
+
+// ============================================================
+// ORDER ITEMS
+// Pivot antara orders & products
+// ============================================================
+
+model OrderItem {
+  id         String  @id @default(uuid()) @db.Uuid
+  order_id   String  @db.Uuid
+  product_id String  @db.Uuid
+  quantity   Int
+  unit_price Decimal @db.Decimal(12, 2)
+  subtotal   Decimal @db.Decimal(12, 2)
+
+  order   Order   @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [product_id], references: [id])
+
+  @@index([order_id])
+  @@index([product_id])
+  @@map("order_items")
+}
+
+// ============================================================
+// DAILY METRICS
+// Agregasi harian untuk performa dashboard
+// ============================================================
+
+model DailyMetric {
+  id              String   @id @default(uuid()) @db.Uuid
+  metric_date     DateTime @db.Date // 1 baris per hari
+  channel         String? // null = total semua channel
+  region_id       String?  @db.Uuid // null = total semua region
+  total_revenue   Decimal  @db.Decimal(14, 2)
+  target_revenue  Decimal  @default(0) @db.Decimal(14, 2) // [+] untuk Monthly Revenue vs Target
+  total_orders    Int
+  new_customers   Int
+  avg_order_value Decimal  @db.Decimal(12, 2)
+  return_rate     Decimal  @db.Decimal(5, 4) // 0.032 = 3.2%
+
+  @@unique([metric_date, channel, region_id]) // hindari duplikat agregasi
+  @@index([metric_date])
+  @@map("daily_metrics")
+}
+
+// ============================================================
+// USER
+// ============================================================
+
+model User {
+  id        String  @id @default(uuid()) @db.Uuid
+  region_id String? @db.Uuid
+
+  name       String
+  email      String  @unique
+  avatar_url String?
+
+  role      Role    @default(ANALYST_REGION)
+  is_active Boolean @default(true)
+
+  last_login DateTime?
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  region        Region?        @relation(fields: [region_id], references: [id])
+  oauthAccounts OAuthAccount[]
+  auditLogs     AuditLog[]
+
+  @@map("users")
+}
+
+// ============================================================
+// OAUTH ACCOUNT
+// ============================================================
+
+model OAuthAccount {
+  id String @id @default(uuid()) @db.Uuid
+
+  user_id  String        @db.Uuid
+  provider OAuthProvider
+
+  provider_user_id String
+  provider_email   String
+
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([provider, provider_user_id])
+  @@index([user_id])
+  @@map("oauth_accounts")
+}
+
+// ============================================================
+// LOG ACTIVITY
+// ============================================================
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  user_id    String   @db.Uuid
+  action     String // "LOGIN", "EXPORT", "VIEW_CUSTOMERS"
+  ip_address String?
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@map("audit_logs")
+}
