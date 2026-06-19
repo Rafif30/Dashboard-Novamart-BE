@@ -21,7 +21,6 @@ FROM node:20-alpine AS production
 WORKDIR /app
 
 COPY package*.json ./
-RUN find /app/dist -type f
 RUN npm install --omit=dev
 # RUN npm run seed
 
@@ -30,6 +29,8 @@ COPY --from=builder /app/prisma ./prisma
 
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+
+RUN find /app/dist -type f
 
 EXPOSE 3000
 
