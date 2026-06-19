@@ -7,6 +7,9 @@ RUN npm install
 
 COPY . .
 
+# Tambahkan dummy DATABASE_URL hanya untuk prisma generate saat build
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+
 # Generate Prisma Client
 RUN npx prisma generate
 
