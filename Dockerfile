@@ -12,8 +12,7 @@ ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 RUN npx prisma generate
 RUN npm run build
 
-RUN ls -la /app/dist/
-RUN ls -la /app/dist/src/   # ← cek isi dist/src di builder
+RUN find /app/dist -type f
 
 FROM node:20-alpine AS production
 
@@ -28,7 +27,7 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
 
-RUN ls -la /app/dist/ && ls -la /app/dist/src/
+RUN find /app/dist -type f
 
 EXPOSE 3000
 
