@@ -181,8 +181,6 @@ export class AuthService {
   async exchangeCode(code: string, res: Response) {
     const userId = await this.cacheManager.get<string>(`oauth:${code}`);
 
-    console.log(userId);
-
     if (!userId) {
       throw new ForbiddenException('Invalid authorization code');
     }
@@ -225,7 +223,7 @@ export class AuthService {
     res.cookie('refresh_token', refreshToken, {
       httpOnly: true,
       secure: isProd,
-      sameSite: isProd ? 'strict' : 'lax',
+      sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 hari dalam milidetik
       path: '/', // cookie hanya dikirim ke endpoint ini
     });
