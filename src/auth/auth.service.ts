@@ -223,7 +223,7 @@ export class AuthService {
     res.cookie('refresh_token', refreshToken, {
       httpOnly: true,
       secure: isProd,
-      sameSite: 'lax',
+      sameSite: 'none',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 hari dalam milidetik
       path: '/', // cookie hanya dikirim ke endpoint ini
     });
