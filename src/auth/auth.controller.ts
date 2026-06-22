@@ -103,11 +103,8 @@ export class AuthController {
     summary: 'Generate JWT Token',
     description: 'Receives Code from frontend, exchange code with JWT Token',
   })
-  async generateToken(
-    @Body() dto: ExchangeCodeDto,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    return this.authService.exchangeCode(dto.code, res);
+  async generateToken(@Body() dto: ExchangeCodeDto) {
+    return this.authService.exchangeCode(dto.code);
   }
 
   // ─────────────────────────────────────────────
@@ -137,17 +134,12 @@ export class AuthController {
     status: 401,
     description: 'Unauthorized - refresh token invalid or expired',
   })
-  refresh(
-    @CurrentUser() user: authTypes.AuthenticatedUser,
-    @Res({ passthrough: true }) res: Response,
-  ) {
+  refresh(@CurrentUser() user: authTypes.AuthenticatedUser) {
     const { accessToken, refreshToken } = this.authService.generateTokens(user);
-
-    // Rotate refresh token (issue yang baru, invalidate yang lama)
-    this.authService.setRefreshTokenCookie(res, refreshToken);
 
     return {
       access_token: accessToken,
+      refresh_token: refreshToken,
       expires_in: 15 * 60, // 15 menit dalam detik
     };
   }
@@ -203,7 +195,7 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    this.authService.clearRefreshTokenCookie(res);
+    // this.authService.clearRefreshTokenCookie(res);
     return { message: 'Logout berhasil' };
   }
 }

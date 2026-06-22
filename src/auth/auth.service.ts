@@ -178,7 +178,7 @@ export class AuthService {
   //
   // validasi token dengan cache redis
   // ─────────────────────────────────────────────
-  async exchangeCode(code: string, res: Response) {
+  async exchangeCode(code: string) {
     const userId = await this.cacheManager.get<string>(`oauth:${code}`);
 
     if (!userId) {
@@ -202,36 +202,11 @@ export class AuthService {
       region_id: user.region_id,
     });
 
-    this.setRefreshTokenCookie(res, refreshToken);
-
     return {
       access_token: accessToken,
+      refresh_token: refreshToken,
       expires_in: 15 * 60,
     };
-  }
-
-  // ─────────────────────────────────────────────
-  // SET REFRESH TOKEN COOKIE
-  //
-  // httpOnly  → tidak bisa dibaca JavaScript (aman dari XSS)
-  // secure    → hanya dikirim via HTTPS (di production)
-  // sameSite  → batasi pengiriman cookie cross-site (CSRF protection)
-  // ─────────────────────────────────────────────
-  setRefreshTokenCookie(res: Response, refreshToken: string): void {
-    const isProd = this.configService.get('NODE_ENV') === 'production';
-
-    res.cookie('refresh_token', refreshToken, {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: 'none',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 hari dalam milidetik
-      path: '/', // cookie hanya dikirim ke endpoint ini
-    });
-  }
-
-  // Hapus cookie saat logout
-  clearRefreshTokenCookie(res: Response): void {
-    res.clearCookie('refresh_token', { path: '/' });
   }
 
   // Update last_login
